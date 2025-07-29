@@ -18,7 +18,9 @@ const items = ref<DropdownMenuItem[]>([
   { label: 'Profile', icon: 'i-heroicons-user-circle' },
   { label: 'Settings', icon: 'i-heroicons-cog-6-tooth' },
   { label: 'Admin Panel', icon: 'i-heroicons-cog-6-tooth', to: '/admin' },
-  { label: 'Sign out', icon: 'i-heroicons-arrow-left-on-rectangle' }
+  { label: 'Sign out', icon: 'i-heroicons-arrow-left-on-rectangle', onSelect(e) {
+      auth.logout()
+  }, }
 ])
 
 // Handle logout
