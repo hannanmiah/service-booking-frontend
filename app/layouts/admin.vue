@@ -1,21 +1,26 @@
 <script setup lang="ts">
-const route = useRoute();
-const authStore = useAuthStore();
+import {ref} from "vue";
 
-const navigation = [
+const route = useRoute();
+const auth = useSanctumAuth();
+const user = useSanctumUser();
+const isMobileMenuOpen = ref(false);
+
+const navigationItems = shallowRef([
   { name: 'Dashboard', href: '/admin', icon: 'i-heroicons-home', current: route.path === '/admin' },
   { name: 'Services', href: '/admin/services', icon: 'i-heroicons-wrench-screwdriver', current: route.path.startsWith('/admin/services') },
   { name: 'Bookings', href: '/admin/bookings', icon: 'i-heroicons-calendar', current: route.path.startsWith('/admin/bookings') },
   { name: 'Users', href: '/admin/users', icon: 'i-heroicons-users', current: route.path.startsWith('/admin/users') },
-];
+]);
 
 const handleLogout = async () => {
-  await authStore.logout();
+  await auth.logout();
   navigateTo('/login');
 };
 </script>
 
 <template>
+  <UApp>
   <div class="min-h-screen bg-gray-100">
     <!-- Sidebar -->
     <div class="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
@@ -26,11 +31,11 @@ const handleLogout = async () => {
           </div>
           <nav class="mt-5 flex-1 px-2 space-y-1">
             <NuxtLink
-              v-for="item in navigation"
+              v-for="item in navigationItems"
               :key="item.name"
               :to="item.href"
               class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-indigo-100 hover:bg-indigo-600 hover:bg-opacity-75"
-              :class="{ 'bg-indigo-800': item.current }"
+              exact-active-class="bg-indigo-800"
             >
               <UIcon :name="item.icon" class="mr-3 h-6 w-6 text-indigo-300" />
               {{ item.name }}
@@ -40,7 +45,7 @@ const handleLogout = async () => {
         <div class="flex-shrink-0 flex border-t border-indigo-800 p-4">
           <div class="flex items-center">
             <div class="ml-3">
-              <p class="text-sm font-medium text-white">{{ authStore.user?.name }}</p>
+              <p class="text-sm font-medium text-white">{{ user?.name }}</p>
               <button
                 type="button"
                 class="text-xs font-medium text-indigo-200 hover:text-white"
@@ -70,11 +75,11 @@ const handleLogout = async () => {
       <div v-if="isMobileMenuOpen" class="bg-indigo-800">
         <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
           <NuxtLink
-            v-for="item in navigation"
+            v-for="item in navigationItems"
             :key="item.name"
             :to="item.href"
             class="block px-3 py-2 rounded-md text-base font-medium text-indigo-100 hover:bg-indigo-700"
-            :class="{ 'bg-indigo-900': item.current }"
+            exact-active-class="bg-indigo-900"
             @click="isMobileMenuOpen = false"
           >
             {{ item.name }}
@@ -83,7 +88,7 @@ const handleLogout = async () => {
         <div class="pt-4 pb-3 border-t border-indigo-700">
           <div class="flex items-center px-5">
             <div class="ml-3">
-              <p class="text-sm font-medium text-white">{{ authStore.user?.name }}</p>
+              <p class="text-sm font-medium text-white">{{ user?.name }}</p>
               <button
                 type="button"
                 class="text-xs font-medium text-indigo-200 hover:text-white"
@@ -108,15 +113,5 @@ const handleLogout = async () => {
       </main>
     </div>
   </div>
+  </UApp>
 </template>
-
-<script>
-import { ref } from 'vue';
-
-export default {
-  setup() {
-    const isMobileMenuOpen = ref(false);
-    return { isMobileMenuOpen };
-  },
-};
-</script>

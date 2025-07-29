@@ -1,133 +1,140 @@
 <template>
-  <div>
+  <div class="flex flex-col gap-6">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-semibold text-gray-900">Services Management</h1>
-      <UButton color="indigo" @click="openCreateModal">
-        <UIcon name="i-heroicons-plus" class="mr-2 h-4 w-4" />
+      <UButton color="success" @click="openCreateModal">
+        <UIcon name="i-heroicons-plus" class="mr-2 h-4 w-4"/>
         Add New Service
       </UButton>
+    </div>
+
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg flex justify-end p-4">
+      <u-input
+          v-model="filter.search"
+          placeholder="Search"
+          icon="i-heroicons-magnifying-glass"
+          size="xl"
+      />
     </div>
 
     <!-- Services Table -->
     <div class="bg-white shadow overflow-hidden sm:rounded-lg">
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th class="relative px-6 py-3"><span class="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="service in services" :key="service.id" class="hover:bg-gray-50">
-              <td class="px-6 py-4">
-                <div class="font-medium text-gray-900">{{ service.name }}</div>
-                <div class="text-sm text-gray-500">{{ service.description }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">${{ service.price }}</td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span 
-                  class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                  :class="{
-                    'bg-green-100 text-green-800': service.status === 'active',
-                    'bg-red-100 text-red-800': service.status === 'inactive'
-                  }"
-                >
-                  {{ service.status }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                <UButton 
-                  color="gray" 
-                  variant="ghost" 
-                  icon="i-heroicons-pencil"
-                  @click="openEditModal(service)"
-                />
-                <UButton 
-                  color="red" 
-                  variant="ghost" 
-                  icon="i-heroicons-trash"
-                  @click="confirmDelete(service)"
-                />
-              </td>
-            </tr>
-            <tr v-if="services.length === 0">
-              <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
-                No services found.
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <UTable ref="table" :data="services.data" :columns="columns">
+          <template #is_active-cell="{ row }">
+            <UBadge
+                :color="row.original.is_active ? 'success' : 'error'"
+                variant="subtle"
+            >
+              {{ row.original.is_active ? 'Active' : 'Inactive' }}
+            </UBadge>
+          </template>
+          <template #is_featured-cell="{ row }">
+            <UBadge
+                :color="row.original.is_featured ? 'success' : 'info'"
+                variant="subtle"
+            >
+              {{ row.original.is_featured ? 'Featured' : 'Not Featured' }}
+            </UBadge>
+          </template>
+          <template #actions-cell="{ row }">
+            <div class="flex space-x-2">
+              <UButton color="info" variant="ghost" icon="i-heroicons-pencil" @click="openEditModal(row.original)"/>
+              <UButton color="error" variant="ghost" icon="i-heroicons-trash" @click="confirmDelete(row.original)"/>
+            </div>
+          </template>
+        </UTable>
       </div>
     </div>
 
-    <!-- Service Form Modal -->
-    <UModal v-model="isModalOpen">
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold">
-              {{ isEditing ? 'Edit Service' : 'Add New Service' }}
-            </h3>
-            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" @click="closeModal" />
-          </div>
-        </template>
+    <!-- Pagination -->
+    <div class="flex justify-end mt-4">
+      <UPagination
+          v-model:page="page"
+          :items-per-page="services?.meta.per_page"
+          :total="services?.meta.total"
+      />
+    </div>
 
+    <!-- Service Form Modal -->
+    <UModal v-model:open="isModalOpen">
+
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold">
+            {{ isEditing ? 'Edit Service' : 'Add New Service' }}
+          </h3>
+          <UButton color="error" variant="ghost" icon="i-heroicons-x-mark" @click="closeModal"/>
+        </div>
+      </template>
+      <template #body>
         <form @submit.prevent="handleSubmit" class="space-y-4">
-          <UFormGroup label="Name" name="name" required>
-            <UInput v-model="formData.name" />
-          </UFormGroup>
-          <UFormGroup label="Description" name="description">
-            <UTextarea v-model="formData.description" />
-          </UFormGroup>
-          <UFormGroup label="Price" name="price" required>
-            <UInput v-model="formData.price" type="number" step="0.01" min="0" />
-          </UFormGroup>
-          <UFormGroup label="Status" name="status">
-            <USelect
-              v-model="formData.status"
-              :options="['active', 'inactive']"
+          <UFormField label="Name" name="name" required>
+            <UInput v-model="formData.name" class="w-full"/>
+          </UFormField>
+          <UFormField label="Description" name="description">
+            <UTextarea v-model="formData.description" class="w-full"/>
+          </UFormField>
+          <UFormField label="Price" name="price" required>
+            <UInput v-model="formData.price" type="number" step="0.01" min="0" class="w-full"/>
+          </UFormField>
+          <UFormField label="Active" name="status">
+            <USwitch
+                v-model="formData.is_active"
             />
-          </UFormGroup>
+          </UFormField>
+          <UFormField label="Featured" name="featured">
+            <USwitch
+                v-model="formData.is_featured"
+            />
+          </UFormField>
           <div class="flex justify-end space-x-3 mt-6">
-            <UButton type="button" color="gray" @click="closeModal">Cancel</UButton>
-            <UButton type="submit" color="indigo" :loading="isSubmitting">
+            <UButton type="button" color="warning" @click="closeModal">Cancel</UButton>
+            <UButton type="submit" color="success" :loading="isSubmitting">
               {{ isEditing ? 'Update' : 'Create' }} Service
             </UButton>
           </div>
         </form>
-      </UCard>
+      </template>
     </UModal>
 
     <!-- Delete Confirmation -->
-    <UModal v-model="isDeleteDialogOpen">
-      <UCard>
-        <template #header>
-          <h3 class="text-lg font-semibold">Confirm Deletion</h3>
-        </template>
+    <UModal v-model:open="isDeleteDialogOpen">
+
+      <template #header>
+        <h3 class="text-lg font-semibold">Confirm Deletion</h3>
+      </template>
+      <template #body>
         <p class="text-gray-600 mb-4">
           Delete "{{ serviceToDelete?.name }}"? This action cannot be undone.
         </p>
         <div class="flex justify-end space-x-3">
-          <UButton color="gray" @click="isDeleteDialogOpen = false">Cancel</UButton>
-          <UButton color="red" :loading="isDeleting" @click="deleteService">
+          <UButton color="warning" @click="isDeleteDialogOpen = false">Cancel</UButton>
+          <UButton color="info" :loading="isDeleting" @click="deleteService">
             Delete
           </UButton>
         </div>
-      </UCard>
+      </template>
     </UModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useServiceStore } from '~/stores/service';
-import type { Service } from '~/stores/service';
+import type {ApiResponse, Service} from '#api';
+import type {TableColumn} from "@nuxt/ui";
+
+definePageMeta({
+  middleware: ['sanctum:auth', 'admin'],
+  layout: 'admin'
+})
 
 const serviceStore = useServiceStore();
-const services = ref<Service[]>([]);
+const client = useSanctumClient();
+const toast = useToast();
+const page = ref(1);
+const filter = reactive({
+  search: ''
+})
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const isSubmitting = ref(false);
@@ -139,36 +146,77 @@ const formData = ref<Partial<Service>>({
   name: '',
   description: '',
   price: 0,
-  status: 'active',
+  is_active: true,
+  is_featured: false
 });
 
-// Fetch services on mount
-onMounted(fetchServices);
+const columns: TableColumn<Service>[] = [
+  {
+    accessorKey: 'id',
+    header: '#',
+  },
+  {
+    accessorKey: 'name',
+    header: 'Name',
+  },
+  {
+    accessorKey: 'price',
+    header: 'Price',
+  },
+  {
+    accessorKey: 'is_active',
+    header: 'Active?',
+  },
+  {
+    accessorKey: 'is_featured',
+    header: 'Featured?',
+  },
+  {
+    accessorKey: 'actions',
+    header: 'Actions',
+  }
+]
 
-async function fetchServices() {
-  try {
-    await serviceStore.fetchServices();
-    services.value = serviceStore.services;
-  } catch (error) {
-    console.error('Error fetching services:', error);
+const getStatusColor = (status: string) => {
+  if (status === 'active') {
+    return 'success';
+  } else if (status === 'inactive') {
+    return 'danger';
+  } else {
+    return 'info';
   }
 }
 
+// Fetch services
+const {
+  data: services,
+  refresh
+} = await useAsyncData<ApiResponse<Service>>(`services-page-${page.value}-search-${filter.search}`, () => {
+  return client('/api/services', {
+    params: {
+      page: page.value,
+      search: filter.search
+    }
+  })
+}, {
+  watch: [page, filter],
+});
+
 function openCreateModal() {
   isEditing.value = false;
-  formData.value = { name: '', description: '', price: 0, status: 'active' };
+  formData.value = {name: '', description: '', price: 0, is_active: true};
   isModalOpen.value = true;
 }
 
 function openEditModal(service: Service) {
   isEditing.value = true;
-  formData.value = { ...service };
+  formData.value = {...service};
   isModalOpen.value = true;
 }
 
 function closeModal() {
   isModalOpen.value = false;
-  formData.value = { name: '', description: '', price: 0, status: 'active' };
+  formData.value = {name: '', description: '', price: 0, is_active: true};
 }
 
 async function handleSubmit() {
@@ -179,10 +227,19 @@ async function handleSubmit() {
     } else {
       await serviceStore.createService(formData.value as Omit<Service, 'id'>);
     }
-    await fetchServices();
+    toast.add({
+      title: 'Success',
+      description: `Service ${isEditing.value ? 'updated' : 'created'} successfully.`,
+      color: 'success',
+    });
+    await refresh();
     closeModal();
   } catch (error) {
-    console.error('Error saving service:', error);
+    toast.add({
+      title: 'Error',
+      description: `Failed to ${isEditing.value ? 'update' : 'create'} service.`,
+      color: 'error',
+    });
   } finally {
     isSubmitting.value = false;
   }
@@ -195,14 +252,23 @@ function confirmDelete(service: Service) {
 
 async function deleteService() {
   if (!serviceToDelete.value?.id) return;
-  
+
   try {
     isDeleting.value = true;
     await serviceStore.deleteService(serviceToDelete.value.id);
-    await fetchServices();
+    await refresh();
     isDeleteDialogOpen.value = false;
+    toast.add({
+      title: 'Success',
+      description: 'Service deleted successfully.',
+      color: 'success',
+    });
   } catch (error) {
-    console.error('Error deleting service:', error);
+    toast.add({
+      title: 'Error',
+      description: 'Failed to delete service.',
+      color: 'error',
+    });
   } finally {
     isDeleting.value = false;
   }

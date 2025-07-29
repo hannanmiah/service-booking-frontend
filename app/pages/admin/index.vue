@@ -109,7 +109,7 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="booking in recentBookings" :key="booking.id" class="hover:bg-gray-50">
+              <tr v-for="booking in bookings?.data" :key="booking.id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   #{{ booking.id }}
                 </td>
@@ -117,7 +117,7 @@
                   {{ booking.service?.name || 'N/A' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ booking.user?.name || 'N/A' }}
+                  {{ booking?.user?.name || 'N/A' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {{ formatDate(booking.booking_date) }}
@@ -150,8 +150,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useServiceStore } from '~/stores/service';
+
+definePageMeta({
+  middleware: ['sanctum:auth','admin'],
+  layout: 'admin'
+})
 
 const serviceStore = useServiceStore();
 
@@ -163,6 +166,8 @@ const stats = ref({
 });
 
 const recentBookings = ref([]);
+
+const {data: bookings} = await useSanctumFetch<{data: Booking[]}>('/api/admin/bookings');
 
 const fetchDashboardData = async () => {
   try {

@@ -19,24 +19,33 @@
 
     <!-- Bookings Table -->
     <div class="bg-white shadow rounded-lg overflow-hidden">
-      <UTable 
+      <UTable
+          ref="table"
         :columns="columns" 
-        :rows="filteredBookings"
+        :data="bookings.data"
         :loading="isLoading"
+        v-model:pagination="pagination"
+        :pagination-options="{
+        getPaginationRowModel: getPaginationRowModel()
+      }"
       >
-        <template #status-data="{ row }">
+        <template #status-cell="{ row }">
           <UBadge 
             :color="getStatusColor(row.status)"
             variant="subtle"
           >
-            {{ row.status }}
+            {{ row.original.status }}
           </UBadge>
         </template>
 
-        <template #actions-data="{ row }">
+        <template #booking_date-cell="{ row }">
+          <p class="text-sm text-gray-900">{{ useDateFormat(row.original.booking_date, 'MM/DD/YYYY h:mm A') }}</p>
+        </template>
+
+        <template #actions-cell="{ row }">
           <div class="flex space-x-2">
             <UButton 
-              color="blue" 
+              color="success"
               variant="ghost" 
               icon="i-heroicons-eye"
               @click="viewBooking(row)"
@@ -71,22 +80,17 @@
       </UTable>
 
       <!-- Empty State -->
-      <div v-if="!isLoading && filteredBookings.length === 0" class="p-6 text-center text-gray-500">
+      <div v-if="!isLoading && bookings.data.length === 0" class="p-6 text-center text-gray-500">
         No bookings found
       </div>
 
       <!-- Pagination -->
-      <div v-if="filteredBookings.length > 0" class="px-4 py-3 flex items-center justify-between border-t border-gray-200">
-        <div class="text-sm text-gray-700">
-          Showing <span class="font-medium">{{ (currentPage - 1) * pageSize + 1 }}</span> to 
-          <span class="font-medium">{{ Math.min(currentPage * pageSize, filteredBookings.length) }}</span> of 
-          <span class="font-medium">{{ filteredBookings.length }}</span> results
-        </div>
+      <div v-if="bookings.data.length > 0" class="px-4 py-3 flex items-center justify-center border-t border-gray-200">
         <UPagination
-          v-model="currentPage"
-          :page-count="pageSize"
-          :total="filteredBookings.length"
-          :ui="{ rounded: 'first:rounded-s-md last:rounded-e-md' }"
+            :default-page="(table?.tableApi?.getState().pagination.pageIndex || 0) + 1"
+            :items-per-page="table?.tableApi?.getState().pagination.pageSize"
+            :total="table?.tableApi?.getFilteredRowModel().rows.length"
+            @update:page="(p) => table?.tableApi?.setPageIndex(p - 1)"
         />
       </div>
     </div>
@@ -97,7 +101,7 @@
         <template #header>
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold">Booking #{{ selectedBooking.id }}</h3>
-            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" @click="isViewModalOpen = false" />
+            <UButton color="success" variant="ghost" icon="i-heroicons-x-mark" @click="isViewModalOpen = false" />
           </div>
         </template>
 
@@ -130,9 +134,9 @@
             </UBadge>
           </div>
           
-          <div v-if="selectedBooking.notes">
+          <div v-if="selectedBooking?.notes">
             <h4 class="text-sm font-medium text-gray-500">Notes</h4>
-            <p class="mt-1 text-sm text-gray-900 whitespace-pre-line">{{ selectedBooking.notes }}</p>
+            <p class="mt-1 text-sm text-gray-900 whitespace-pre-line">{{ selectedBooking?.notes }}</p>
           </div>
         </div>
       </UCard>
@@ -141,12 +145,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useServiceStore } from '~/stores/service';
-import type { Booking } from '~/stores/service';
+import type { Booking } from '#api';
+import { getPaginationRowModel } from '@tanstack/vue-table'
+
+definePageMeta({
+  middleware: ['sanctum:auth','admin'],
+  layout: 'admin'
+})
 
 const serviceStore = useServiceStore();
-const bookings = ref<Booking[]>([]);
+const table = useTemplateRef('table');
 const isLoading = ref(false);
 const searchQuery = ref('');
 const statusFilter = ref('all');
@@ -157,52 +165,17 @@ const selectedBooking = ref<Booking | null>(null);
 
 // Table columns
 const columns = [
-  { key: 'id', label: 'ID' },
-  { key: 'user.name', label: 'Customer' },
-  { key: 'service.name', label: 'Service' },
-  { key: 'booking_date', label: 'Date & Time' },
-  { key: 'status', label: 'Status' },
-  { key: 'actions', label: 'Actions' }
+  { accessorKey: 'id', header: 'ID' },
+  { accessorKey: 'user.name', header: 'Customer' },
+  { accessorKey: 'service.name', header: 'Service' },
+  { accessorKey: 'booking_date', header: 'Date & Time' },
+  { accessorKey: 'status', header: 'Status' },
+  { id: 'actions', header: '#' }
 ];
 
-// Fetch bookings on mount
-onMounted(async () => {
-  await fetchBookings();
-});
+// Fetch bookings
+const {data: bookings} = await useSanctumFetch<{data: Booking[]}>('/api/admin/bookings');
 
-async function fetchBookings() {
-  try {
-    isLoading.value = true;
-    await serviceStore.fetchAllBookings();
-    bookings.value = serviceStore.bookings;
-  } catch (error) {
-    console.error('Error fetching bookings:', error);
-  } finally {
-    isLoading.value = false;
-  }
-}
-
-// Filter and search bookings
-const filteredBookings = computed(() => {
-  return bookings.value
-    .filter(booking => {
-      const matchesSearch = !searchQuery.value || 
-        booking.user?.name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        booking.service?.name?.toLowerCase().includes(searchQuery.value.toLowerCase());
-      
-      const matchesStatus = statusFilter.value === 'all' || 
-        booking.status === statusFilter.value;
-      
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => new Date(b.booking_date).getTime() - new Date(a.booking_date).getTime());
-});
-
-// Pagination
-const paginatedBookings = computed(() => {
-  const start = (currentPage.value - 1) * pageSize;
-  return filteredBookings.value.slice(start, start + pageSize);
-});
 
 // Format date and time
 function formatDateTime(dateString: string) {
@@ -219,12 +192,12 @@ function formatDateTime(dateString: string) {
 // Get status color
 function getStatusColor(status: string) {
   const statusColors: Record<string, string> = {
-    pending: 'yellow',
-    confirmed: 'blue',
-    completed: 'green',
-    cancelled: 'red',
+    pending: 'warning',
+    confirmed: 'info',
+    completed: 'success',
+    cancelled: 'error',
   };
-  return statusColors[status] || 'gray';
+  return statusColors[status] || 'info';
 }
 
 // View booking details
@@ -242,4 +215,9 @@ async function updateStatus(booking: Booking, newStatus: string) {
     console.error('Error updating booking status:', error);
   }
 }
+
+const pagination = ref({
+  pageIndex: 0,
+  pageSize: 15
+})
 </script>

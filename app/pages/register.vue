@@ -78,7 +78,7 @@
             class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-              <UserPlusIcon class="h-5 w-5 text-indigo-500 group-hover:text-indigo-400" />
+              <UIcon name="i-heroicons-user-add" class="h-5 w-5 text-indigo-500 group-hover:text-indigo-400" />
             </span>
             {{ loading ? 'Creating account...' : 'Create account' }}
           </button>
@@ -89,11 +89,9 @@
 </template>
 
 <script setup lang="ts">
-import { UserPlusIcon } from '@heroicons/vue/20/solid';
 
 definePageMeta({
-  layout: 'auth',
-  middleware: ['guest'],
+  middleware: ['sanctum:guest'],
 });
 
 const name = ref('');
@@ -102,8 +100,9 @@ const password = ref('');
 const passwordConfirm = ref('');
 const error = ref('');
 const loading = ref(false);
-const authStore = useAuthStore();
-const router = useRouter();
+const auth = useSanctumAuth();
+const toast = useToast();
+const client = useSanctumClient();
 
 const handleRegister = async () => {
   if (!name.value || !email.value || !password.value || !passwordConfirm.value) {
@@ -120,18 +119,33 @@ const handleRegister = async () => {
     loading.value = true;
     error.value = '';
     
-    await authStore.register({
-      name: name.value,
-      email: email.value,
-      password: password.value,
-      password_confirmation: passwordConfirm.value,
-    });
+    await client("/api/register",{
+      method: "POST",
+      body: {
+        name: name.value,
+        email: email.value,
+        password: password.value,
+        password_confirmation: passwordConfirm.value,
+      }
+    })
+
+    toast.add({
+      title: 'Registration successful',
+      color: 'success',
+      icon: 'i-heroicons-check-circle',
+      description: 'Account created successfully',
+    })
     
-    // Redirect to home after successful registration
-    await router.push('/');
+    // redirect to login page
+    navigateTo('/login');
   } catch (err: any) {
     error.value = err.message || 'Failed to create account. Please try again.';
-    console.error('Registration error:', err);
+    toast.add({
+      title: 'Registration failed',
+      color: 'error',
+      icon: 'i-heroicons-x-circle',
+      description: error.value,
+    })
   } finally {
     loading.value = false;
   }

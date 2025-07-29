@@ -11,37 +11,29 @@
     <!-- Services Grid -->
     <div class="container mx-auto px-4 py-12">
       <!-- Search and Filter -->
-      <div class="mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div class="w-full md:w-1/3">
-          <UInput 
+      <div class="mb-8 flex flex-col md:flex-row gap-4 items-center justify-end">
+          <UInput
+              size="xl"
             v-model="searchQuery" 
             placeholder="Search services..." 
             icon="i-heroicons-magnifying-glass"
           />
-        </div>
-        <div class="w-full md:w-1/4">
-          <USelect
-            v-model="categoryFilter"
-            :options="['All Categories', 'Cleaning', 'Repair', 'Maintenance', 'Installation']"
-            placeholder="Filter by category"
-          />
-        </div>
       </div>
 
       <!-- Services Grid -->
-      <div v-if="services.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div v-if="services?.data.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         <div 
-          v-for="service in filteredServices" 
+          v-for="service in services.data"
           :key="service.id" 
           class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
         >
           <div class="h-48 bg-gray-200 relative">
             <img 
-              :src="service.image || '/images/service-placeholder.jpg'" 
+              :src="service.image || '/images/service.svg'"
               :alt="service.name"
               class="w-full h-full object-cover"
             >
-            <div v-if="service.isPopular" class="absolute top-2 right-2">
+            <div v-if="service.is_featured" class="absolute top-2 right-2">
               <span class="bg-yellow-400 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded">
                 Popular
               </span>
@@ -59,14 +51,14 @@
                 <UIcon 
                   v-for="i in 5" 
                   :key="i"
-                  :name="i <= service.rating ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+                  :name="i <= service?.rating ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
                   class="h-5 w-5 text-yellow-400"
                 />
-                <span class="ml-2 text-sm text-gray-500">{{ service.rating }} ({{ service.reviewCount }})</span>
+                <span class="ml-2 text-sm text-gray-500">{{ service?.rating || 0 }} ({{ service?.reviewCount || 0 }})</span>
               </div>
               <UButton 
                 :to="`/services/${service.id}`" 
-                color="indigo" 
+                color="primary"
                 size="sm"
               >
                 View Details
@@ -87,19 +79,18 @@
         <h3 class="mt-2 text-lg font-medium text-gray-900">No services found</h3>
         <p class="mt-1 text-gray-500">We couldn't find any services matching your criteria.</p>
         <div class="mt-6">
-          <UButton @click="resetFilters" color="indigo">
+          <UButton @click="resetFilters" color="primary">
             Reset filters
           </UButton>
         </div>
       </div>
 
       <!-- Pagination -->
-      <div v-if="filteredServices.length > 0" class="mt-12 flex justify-center">
+      <div v-if="services.data.length > 0" class="mt-12 flex justify-center">
         <UPagination
-          v-model="currentPage"
-          :page-count="pageSize"
-          :total="totalServices"
-          :ui="{ rounded: 'first:rounded-s-md last:rounded-e-md' }"
+          v-model:page="currentPage"
+          :items-per-page="services.meta.per_page"
+          :total="services.meta.total"
         />
       </div>
     </div>
@@ -107,115 +98,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useServiceStore } from '~/stores/service';
+import type { Service,ApiResponse } from '#api';
 
-const serviceStore = useServiceStore();
+definePageMeta({
+  middleware: ['sanctum:auth']
+});
+
+const client = useSanctumClient();
 const isLoading = ref(false);
 const searchQuery = ref('');
 const categoryFilter = ref('All Categories');
 const currentPage = ref(1);
-const pageSize = 9;
 
-// Mock data - replace with actual API call
-const services = ref([
-  {
-    id: 1,
-    name: 'Home Cleaning',
-    description: 'Thorough cleaning of your entire home by professional cleaners.',
-    price: 99,
-    rating: 4.8,
-    reviewCount: 124,
-    category: 'Cleaning',
-    isPopular: true,
-    image: '/images/cleaning.jpg'
-  },
-  {
-    id: 2,
-    name: 'AC Repair',
-    description: 'Expert repair and maintenance for all types of air conditioning units.',
-    price: 79,
-    rating: 4.7,
-    reviewCount: 98,
-    category: 'Repair',
-    isPopular: true,
-    image: '/images/ac-repair.jpg'
-  },
-  {
-    id: 3,
-    name: 'Plumbing',
-    description: '24/7 emergency plumbing services for all your needs.',
-    price: 89,
-    rating: 4.9,
-    reviewCount: 156,
-    category: 'Repair',
-    image: '/images/plumbing.jpg'
-  },
-  {
-    id: 4,
-    name: 'Electrical',
-    description: 'Professional electrical repairs and installations.',
-    price: 109,
-    rating: 4.6,
-    reviewCount: 87,
-    category: 'Repair',
-    image: '/images/electrical.jpg'
-  },
-  {
-    id: 5,
-    name: 'Carpet Cleaning',
-    description: 'Deep cleaning for all types of carpets and rugs.',
-    price: 129,
-    rating: 4.8,
-    reviewCount: 112,
-    category: 'Cleaning',
-    isPopular: true,
-    image: '/images/carpet-cleaning.jpg'
-  },
-  {
-    id: 6,
-    name: 'Appliance Installation',
-    description: 'Professional installation of home appliances.',
-    price: 149,
-    rating: 4.7,
-    reviewCount: 76,
-    category: 'Installation',
-    image: '/images/appliance-installation.jpg'
-  }
-]);
-
-// Computed properties
-const filteredServices = computed(() => {
-  return services.value.filter(service => {
-    const matchesSearch = service.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                        service.description.toLowerCase().includes(searchQuery.value.toLowerCase());
-    
-    const matchesCategory = categoryFilter.value === 'All Categories' || 
-                          service.category === categoryFilter.value;
-    
-    return matchesSearch && matchesCategory;
-  });
+const {data: services} = await useAsyncData<ApiResponse<Service>>(`services-page-${currentPage.value}-search-${searchQuery.value}`,  () => {
+  return client('/api/services', {
+    params: {
+      search: searchQuery.value,
+      page: currentPage.value
+    }
+  })
+},{
+  watch: [searchQuery, currentPage],
 });
 
-const totalServices = computed(() => filteredServices.value.length);
-
-// Methods
 const resetFilters = () => {
   searchQuery.value = '';
   categoryFilter.value = 'All Categories';
+  currentPage.value = 1;
 };
-
-// Fetch services on mount
-onMounted(async () => {
-  try {
-    isLoading.value = true;
-    // Uncomment when API is ready
-    // await serviceStore.fetchServices();
-    // services.value = serviceStore.services;
-  } catch (error) {
-    console.error('Error fetching services:', error);
-  } finally {
-    isLoading.value = false;
-  }
-});
 </script>

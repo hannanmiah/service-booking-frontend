@@ -53,7 +53,7 @@
             class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-              <LockClosedIcon class="h-5 w-5 text-indigo-500 group-hover:text-indigo-400" />
+              <UIcon name="i-heroicons-user-add" class="h-5 w-5 text-indigo-500 group-hover:text-indigo-400" />
             </span>
             {{ loading ? 'Signing in...' : 'Sign in' }}
           </button>
@@ -64,19 +64,17 @@
 </template>
 
 <script setup lang="ts">
-import { LockClosedIcon } from '@heroicons/vue/20/solid';
-
 definePageMeta({
-  layout: 'auth',
-  middleware: ['guest'],
+  middleware: ['sanctum:guest'],
 });
 
 const email = ref('');
 const password = ref('');
 const error = ref('');
 const loading = ref(false);
-const authStore = useAuthStore();
 const router = useRouter();
+const auth = useSanctumAuth();
+const toast = useToast();
 
 const handleLogin = async () => {
   if (!email.value || !password.value) {
@@ -88,13 +86,26 @@ const handleLogin = async () => {
     loading.value = true;
     error.value = '';
     
-    await authStore.login(email.value, password.value);
+    await auth.login({
+      email: email.value,
+      password: password.value,
+    });
+
+    toast.add({
+      color:'success',
+      title: 'Login Success',
+      description: 'You have successfully logged in.',
+    })
     
     // Redirect to dashboard or home
     await router.push('/');
   } catch (err: any) {
     error.value = err.message || 'Failed to sign in. Please check your credentials.';
-    console.error('Login error:', err);
+    toast.add({
+      color:'error',
+      title: 'Login Error',
+      description: err.message,
+    })
   } finally {
     loading.value = false;
   }

@@ -18,7 +18,7 @@
             Booking Details
           </h3>
           <p class="mt-1 max-w-2xl text-sm text-gray-500">
-            Your booking reference: <span class="font-mono font-medium">#{{ booking.reference }}</span>
+            Your booking reference: <span class="font-mono font-medium">#{{ booking?.data.id }}</span>
           </p>
         </div>
         <div class="border-t border-gray-200">
@@ -26,31 +26,31 @@
             <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt class="text-sm font-medium text-gray-500">Service</dt>
               <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {{ booking.service.name }}
+                {{ booking?.data?.service?.name }}
               </dd>
             </div>
             <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt class="text-sm font-medium text-gray-500">Date & Time</dt>
               <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {{ formatDate(booking.date) }}, {{ booking.timeSlot }}
+                {{ formatDate(booking?.data?.booking_date) }}, {{ booking?.data.created_at }}
               </dd>
             </div>
             <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt class="text-sm font-medium text-gray-500">Service Provider</dt>
               <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {{ booking.serviceProvider.name }}
+                {{ booking?.data?.serviceProvider?.name || 'Service Pro' }}
               </dd>
             </div>
             <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt class="text-sm font-medium text-gray-500">Address</dt>
               <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {{ booking.address }}
+                {{ booking?.data?.address || 'N/A' }}
               </dd>
             </div>
             <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt class="text-sm font-medium text-gray-500">Total Amount</dt>
               <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                ${{ booking.totalAmount.toFixed(2) }}
+                ${{ booking?.data?.service?.price }}
               </dd>
             </div>
             <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
@@ -88,7 +88,7 @@
       <div class="mt-10 flex flex-col sm:flex-row justify-center gap-4">
         <UButton 
           to="/bookings" 
-          color="indigo" 
+          color="success"
           class="w-full sm:w-auto justify-center"
         >
           View My Bookings
@@ -106,28 +106,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
 
 const route = useRoute();
 
-// Mock booking data - in a real app, this would come from the API
-const booking = ref({
-  reference: 'BK' + Math.floor(100000 + Math.random() * 900000),
-  service: {
-    name: route.query.serviceName || 'Home Cleaning',
-  },
-  date: route.query.date || new Date().toISOString().split('T')[0],
-  timeSlot: route.query.time || '10:00 AM - 12:00 PM',
-  serviceProvider: {
-    name: 'CleanPro Services',
-    phone: '+1 (555) 123-4567',
-    email: 'contact@cleanpro.example'
-  },
-  address: '123 Main St, Apt 4B, New York, NY 10001',
-  totalAmount: 99.00,
-  status: 'confirmed'
-});
+// fetch
+const {data: booking} = await useSanctumFetch<{data: Booking}>(`/api/bookings/${route.query.booking}`);
 
 // Format date for display
 const formatDate = (dateString: string) => {
@@ -139,9 +122,4 @@ const formatDate = (dateString: string) => {
   };
   return new Date(dateString).toLocaleDateString('en-US', options);
 };
-
-// In a real app, you would fetch the booking details from an API
-onMounted(() => {
-  // fetchBooking(route.query.bookingId);
-});
 </script>

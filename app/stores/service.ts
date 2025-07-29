@@ -1,22 +1,4 @@
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
-
-export interface Service {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  status: string;
-}
-
-export interface Booking {
-  id: number;
-  user_id: number;
-  service_id: number;
-  booking_date: string;
-  status: string;
-  service?: Service;
-}
+import type { Service, Booking } from '#api';
 
 export const useServiceStore = defineStore('service', () => {
   const services = ref<Service[]>([]);
@@ -31,10 +13,7 @@ export const useServiceStore = defineStore('service', () => {
     const config = useRuntimeConfig();
     
     try {
-      const { data, error: fetchError } = await useFetch('/services', {
-        baseURL: config.public.apiBase,
-        headers: useRequestHeaders(['cookie']),
-      });
+      const { data, error: fetchError } = await useSanctumFetch('/api/services')
 
       if (fetchError.value) {
         throw new Error(fetchError.value.data?.message || 'Failed to fetch services');
@@ -55,16 +34,10 @@ export const useServiceStore = defineStore('service', () => {
     loading.value = true;
     error.value = null;
     const config = useRuntimeConfig();
-    const authStore = useAuthStore();
     
     try {
-      const { data, error: createError } = await useFetch('/services', {
-        baseURL: config.public.apiBase,
+      const { data, error: createError } = await useSanctumFetch('/api/services', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authStore.token}`,
-          ...useRequestHeaders(['cookie']),
-        },
         body: serviceData,
       });
 
@@ -86,17 +59,10 @@ export const useServiceStore = defineStore('service', () => {
   const updateService = async (id: number, serviceData: Partial<Service>) => {
     loading.value = true;
     error.value = null;
-    const config = useRuntimeConfig();
-    const authStore = useAuthStore();
     
     try {
-      const { data, error: updateError } = await useFetch(`/services/${id}`, {
-        baseURL: config.public.apiBase,
+      const { data, error: updateError } = await useSanctumFetch(`/api/services/${id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${authStore.token}`,
-          ...useRequestHeaders(['cookie']),
-        },
         body: serviceData,
       });
 
@@ -119,16 +85,10 @@ export const useServiceStore = defineStore('service', () => {
     loading.value = true;
     error.value = null;
     const config = useRuntimeConfig();
-    const authStore = useAuthStore();
     
     try {
-      const { error: deleteError } = await useFetch(`/services/${id}`, {
-        baseURL: config.public.apiBase,
+      const { error: deleteError } = await useSanctumFetch(`/api/services/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${authStore.token}`,
-          ...useRequestHeaders(['cookie']),
-        },
       });
 
       if (deleteError.value) {
@@ -148,17 +108,9 @@ export const useServiceStore = defineStore('service', () => {
   const fetchUserBookings = async () => {
     loading.value = true;
     error.value = null;
-    const config = useRuntimeConfig();
-    const authStore = useAuthStore();
     
     try {
-      const { data, error: fetchError } = await useFetch('/bookings', {
-        baseURL: config.public.apiBase,
-        headers: {
-          'Authorization': `Bearer ${authStore.token}`,
-          ...useRequestHeaders(['cookie']),
-        },
-      });
+      const { data, error: fetchError } = await useSanctumFetch('/api/bookings');
 
       if (fetchError.value) {
         throw new Error(fetchError.value.data?.message || 'Failed to fetch bookings');
@@ -178,17 +130,10 @@ export const useServiceStore = defineStore('service', () => {
   const createBooking = async (bookingData: { service_id: number; booking_date: string }) => {
     loading.value = true;
     error.value = null;
-    const config = useRuntimeConfig();
-    const authStore = useAuthStore();
     
     try {
-      const { data, error: createError } = await useFetch('/bookings', {
-        baseURL: config.public.apiBase,
+      const { data, error: createError } = await useFetch('/api/bookings', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authStore.token}`,
-          ...useRequestHeaders(['cookie']),
-        },
         body: bookingData,
       });
 
@@ -210,16 +155,10 @@ export const useServiceStore = defineStore('service', () => {
   const fetchAllBookings = async () => {
     loading.value = true;
     error.value = null;
-    const config = useRuntimeConfig();
-    const authStore = useAuthStore();
     
     try {
-      const { data, error: fetchError } = await useFetch('/admin/bookings', {
-        baseURL: config.public.apiBase,
-        headers: {
-          'Authorization': `Bearer ${authStore.token}`,
-          ...useRequestHeaders(['cookie']),
-        },
+      const { data, error: fetchError } = await useFetch('/api/admin/bookings', {
+
       });
 
       if (fetchError.value) {

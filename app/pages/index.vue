@@ -1,27 +1,10 @@
 <script setup lang="ts">
-const featuredServices = ref([
-  {
-    id: 1,
-    name: 'Home Cleaning',
-    description: 'Professional home cleaning service',
-    price: 99,
-    rating: 4.8,
-  },
-  {
-    id: 2,
-    name: 'AC Repair',
-    description: 'Expert AC repair services',
-    price: 79,
-    rating: 4.7,
-  },
-  {
-    id: 3,
-    name: 'Plumbing',
-    description: '24/7 emergency plumbing',
-    price: 89,
-    rating: 4.9,
-  },
-]);
+import type { ApiResponse, Service} from '#api';
+const {data: services} = await useSanctumFetch<ApiResponse<Service>>('/api/services',{
+  params: {
+    featured: true
+  }
+});
 </script>
 
 <template>
@@ -42,14 +25,20 @@ const featuredServices = ref([
       <div class="container mx-auto px-4">
         <h2 class="text-3xl font-bold text-center mb-12">Popular Services</h2>
         <div class="grid md:grid-cols-3 gap-8">
-          <div v-for="service in featuredServices" :key="service.id" class="bg-white rounded-lg shadow-md overflow-hidden">
-            <div class="h-48 bg-gray-200"></div>
+          <div v-for="service in services?.data" :key="service.id" class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="h-48 bg-gray-200">
+              <img
+                :src="service?.image || '/images/service.svg'"
+                :alt="service.name"
+                class="w-full h-full object-cover"
+              >
+            </div>
             <div class="p-6">
               <h3 class="text-xl font-semibold">{{ service.name }}</h3>
-              <p class="text-gray-600 mt-2">{{ service.description }}</p>
+              <p class="text-gray-600 mt-2 line-clamp-2">{{ service.description }}</p>
               <div class="mt-4 flex justify-between items-center">
                 <span class="text-indigo-600 font-bold">${{ service.price }}</span>
-                <UButton to="/book-now" color="indigo" size="sm">
+                <UButton :to="`/services/${service.id}`" color="primary" size="sm">
                   Book Now
                 </UButton>
               </div>
@@ -65,7 +54,7 @@ const featuredServices = ref([
         <h2 class="text-3xl font-bold mb-4">Ready to get started?</h2>
         <p class="text-xl mb-8 max-w-2xl mx-auto">Join thousands of satisfied customers today</p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <UButton to="/register" color="indigo" size="xl">
+          <UButton to="/register" color="primary" size="xl">
             Sign Up Now
           </UButton>
           <UButton to="/services" variant="outline" size="xl">

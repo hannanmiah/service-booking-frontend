@@ -1,6 +1,11 @@
 <script setup lang="ts">
+import type { DropdownMenuItem } from '@nuxt/ui';
 const route = useRoute();
-const authStore = useAuthStore();
+const auth = useSanctumAuth();
+const user = useSanctumUser<{
+  name: string;
+  email: string;
+}>()
 
 // Navigation items
 const navItems = [
@@ -9,9 +14,16 @@ const navItems = [
   { label: 'My Bookings', to: '/bookings', icon: 'i-heroicons-calendar' },
 ];
 
+const items = ref<DropdownMenuItem[]>([
+  { label: 'Profile', icon: 'i-heroicons-user-circle' },
+  { label: 'Settings', icon: 'i-heroicons-cog-6-tooth' },
+  { label: 'Admin Panel', icon: 'i-heroicons-cog-6-tooth', to: '/admin' },
+  { label: 'Sign out', icon: 'i-heroicons-arrow-left-on-rectangle' }
+])
+
 // Handle logout
 const handleLogout = async () => {
-  await authStore.logout();
+  await auth.logout();
   navigateTo('/login');
 };
 </script>
@@ -46,26 +58,21 @@ const handleLogout = async () => {
 
           <!-- Auth Buttons -->
           <div class="flex items-center space-x-4">
-            <template v-if="authStore.isAuthenticated">
-              <UDropdown :items="[[
-                { label: 'Profile', icon: 'i-heroicons-user-circle' },
-                { label: 'Settings', icon: 'i-heroicons-cog-6-tooth' },
-                { label: 'Admin Panel', icon: 'i-heroicons-cog-6-tooth', to: '/admin', v-if="authStore.isAdmin" },
-                { label: 'Sign out', icon: 'i-heroicons-arrow-left-on-rectangle', click: handleLogout }
-              ]]" :ui="{ width: 'w-48', item: { disabled: 'cursor-text select-text' } }">
-                <UButton color="white" variant="ghost">
+            <template v-if="auth.isAuthenticated.value">
+              <UDropdownMenu :items="items">
+                <UButton color="neutral" variant="ghost">
                   <UAvatar
-                    :text="authStore.user?.name?.charAt(0) || 'U'"
+                    :text="user?.name?.charAt(0) || 'U'"
                     size="sm"
                     class="mr-2"
                   />
-                  <span class="hidden sm:inline">{{ authStore.user?.name || 'User' }}</span>
+                  <span class="hidden sm:inline">{{ user?.name || 'User' }}</span>
                 </UButton>
-              </UDropdown>
+              </UDropdownMenu>
             </template>
             <template v-else>
               <UButton to="/login" variant="ghost" class="hidden sm:block">Sign in</UButton>
-              <UButton to="/register" color="indigo">Sign up</UButton>
+              <UButton to="/register" color="primary">Sign up</UButton>
             </template>
           </div>
         </div>
